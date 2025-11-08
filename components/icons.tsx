@@ -1,4 +1,4 @@
-export const BotIcon = () => {
+export const BotIcon = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       height="16"
@@ -6,6 +6,7 @@ export const BotIcon = () => {
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width="16"
+      {...props}
     >
       <path
         clipRule="evenodd"
@@ -17,7 +18,7 @@ export const BotIcon = () => {
   );
 };
 
-export const UserIcon = () => {
+export const UserIcon = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       data-testid="geist-icon"
@@ -26,6 +27,7 @@ export const UserIcon = () => {
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width="16"
+      {...props}
     >
       <path
         clipRule="evenodd"
@@ -37,7 +39,7 @@ export const UserIcon = () => {
   );
 };
 
-export const AttachmentIcon = () => {
+export const AttachmentIcon = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       height="16"
@@ -45,6 +47,7 @@ export const AttachmentIcon = () => {
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width="16"
+      {...props}
     >
       <path
         clipRule="evenodd"
@@ -56,7 +59,10 @@ export const AttachmentIcon = () => {
   );
 };
 
-export const VercelIcon = ({ size = 17 }) => {
+export const VercelIcon = ({
+  size = 17,
+  ...props
+}: { size?: number } & React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       height={size}
@@ -64,6 +70,7 @@ export const VercelIcon = ({ size = 17 }) => {
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
+      {...props}
     >
       <path
         clipRule="evenodd"
@@ -75,7 +82,7 @@ export const VercelIcon = ({ size = 17 }) => {
   );
 };
 
-export const GitIcon = () => {
+export const GitIcon = (props: React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       height="16"
@@ -83,6 +90,7 @@ export const GitIcon = () => {
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width="16"
+      {...props}
     >
       <g clipPath="url(#clip0_872_3147)">
         <path
@@ -496,7 +504,10 @@ export const TrashIcon = ({ size = 16 }: { size?: number }) => {
   );
 };
 
-export const InfoIcon = ({ size = 16 }: { size?: number }) => {
+export const InfoIcon = ({
+  size = 16,
+  ...props
+}: { size?: number } & React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       height={size}
@@ -504,6 +515,7 @@ export const InfoIcon = ({ size = 16 }: { size?: number }) => {
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
+      {...props}
     >
       <path
         clipRule="evenodd"
@@ -1123,7 +1135,10 @@ export const LogsIcon = ({ size = 16 }: { size?: number }) => {
   );
 };
 
-export const ImageIcon = ({ size = 16 }: { size?: number }) => {
+export const ImageIcon = ({
+  size = 16,
+  ...props
+}: { size?: number } & React.SVGProps<SVGSVGElement>) => {
   return (
     <svg
       height={size}
@@ -1131,6 +1146,7 @@ export const ImageIcon = ({ size = 16 }: { size?: number }) => {
       style={{ color: "currentcolor" }}
       viewBox="0 0 16 16"
       width={size}
+      {...props}
     >
       <path
         clipRule="evenodd"

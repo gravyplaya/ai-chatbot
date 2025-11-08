@@ -179,9 +179,7 @@ const PurePreviewMessage = ({
                       state === "output-error") && (
                       <ToolOutput
                         errorText={
-                          state === "output-error"
-                            ? String(part.output?.error)
-                            : undefined
+                          state === "output-error" ? part.errorText : undefined
                         }
                         output={
                           state === "output-available" ? (
