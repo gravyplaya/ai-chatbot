@@ -19,8 +19,15 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
-import { SelectItem } from "@/components/ui/select";
-import { chatModels } from "@/lib/ai/models";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { chatModels, type ImageModel } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
@@ -36,9 +43,24 @@ import {
   PromptInputTools,
 } from "./elements/prompt-input";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
   ArrowUpIcon,
   ChevronDownIcon,
   CpuIcon,
+  ImageIcon,
   PaperclipIcon,
   StopIcon,
 } from "./icons";
@@ -103,7 +125,7 @@ function PureMultimodalInput({
 
   const [localStorageInput, setLocalStorageInput] = useLocalStorage(
     "input",
-    ""
+    "",
   );
 
   useEffect(() => {
@@ -203,7 +225,7 @@ function PureMultimodalInput({
     () => ({
       usage,
     }),
-    [usage]
+    [usage],
   );
 
   const handleFileChange = useCallback(
@@ -216,7 +238,7 @@ function PureMultimodalInput({
         const uploadPromises = files.map((file) => uploadFile(file));
         const uploadedAttachments = await Promise.all(uploadPromises);
         const successfullyUploadedAttachments = uploadedAttachments.filter(
-          (attachment) => attachment !== undefined
+          (attachment) => attachment !== undefined,
         );
 
         setAttachments((currentAttachments) => [
@@ -229,7 +251,49 @@ function PureMultimodalInput({
         setUploadQueue([]);
       }
     },
-    [setAttachments, uploadFile]
+    [setAttachments, uploadFile],
+  );
+
+  const handleGenerateImage = useCallback(
+    async (prompt: string, model: string, style: string) => {
+      if (!prompt) {
+        toast.error("Please enter a prompt to generate an image.");
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/image/generate", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ prompt, model, style_preset: style }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const { url } = data;
+
+          sendMessage({
+            role: "user",
+            parts: [
+              {
+                type: "file",
+                url,
+                name: prompt,
+                mediaType: "image/png",
+              },
+            ],
+          });
+        } else {
+          const { error } = await response.json();
+          toast.error(error);
+        }
+      } catch (_error) {
+        toast.error("Failed to generate image, please try again!");
+      }
+    },
+    [sendMessage],
   );
 
   return (
@@ -275,7 +339,7 @@ function PureMultimodalInput({
                 key={attachment.url}
                 onRemove={() => {
                   setAttachments((currentAttachments) =>
-                    currentAttachments.filter((a) => a.url !== attachment.url)
+                    currentAttachments.filter((a) => a.url !== attachment.url),
                   );
                   if (fileInputRef.current) {
                     fileInputRef.current.value = "";
@@ -320,6 +384,7 @@ function PureMultimodalInput({
               selectedModelId={selectedModelId}
               status={status}
             />
+            <GenerateImageButton onGenerate={handleGenerateImage} />
             <ModelSelectorCompact
               onModelChange={onModelChange}
               selectedModelId={selectedModelId}
@@ -363,7 +428,7 @@ export const MultimodalInput = memo(
     }
 
     return true;
-  }
+  },
 );
 
 function PureAttachmentsButton({
@@ -395,6 +460,118 @@ function PureAttachmentsButton({
 
 const AttachmentsButton = memo(PureAttachmentsButton);
 
+function PureGenerateImageButton({
+  onGenerate,
+}: {
+  onGenerate: (prompt: string, model: string, style: string) => void;
+}) {
+  const [prompt, setPrompt] = useState("");
+  const [open, setOpen] = useState(false);
+  const [models, setModels] = useState<ImageModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState<string>("");
+  const [styles, setStyles] = useState<string[]>([]);
+  const [selectedStyle, setSelectedStyle] = useState<string>("");
+
+  useEffect(() => {
+    if (open) {
+      fetch("/api/image/models")
+        .then((res) => res.json())
+        .then((data) => {
+          setModels(data);
+          if (data.length > 0) {
+            setSelectedModel(data[0].id);
+          }
+        });
+      fetch("/api/image/styles")
+        .then((res) => res.json())
+        .then((data) => {
+          setStyles(data);
+          if (data.length > 0) {
+            setSelectedStyle(data[0]);
+          }
+        });
+    }
+  }, [open]);
+
+  return (
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          className="aspect-square h-8 rounded-lg p-1 transition-colors hover:bg-accent"
+          variant="ghost"
+        >
+          <ImageIcon size={14} style={{ width: 14, height: 14 }} />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Generate Image</AlertDialogTitle>
+          <AlertDialogDescription>
+            Enter a prompt and select a model and style to generate an image.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="prompt">Prompt</Label>
+            <Textarea
+              id="prompt"
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              placeholder="A beautiful sunset over a mountain range"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="model">Model</Label>
+            <Select onValueChange={setSelectedModel} value={selectedModel}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a model" />
+              </SelectTrigger>
+              <SelectContent>
+                {models.map((model) => (
+                  <SelectItem key={model.id} value={model.id}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{model.name}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {model.description}
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="style">Style</Label>
+            <Select onValueChange={setSelectedStyle} value={selectedStyle}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a style" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                {styles.map((style) => (
+                  <SelectItem key={style} value={style}>
+                    {style}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={!prompt.trim()}
+            onClick={() => onGenerate(prompt, selectedModel, selectedStyle)}
+          >
+            Generate
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+const GenerateImageButton = memo(PureGenerateImageButton);
+
 function PureModelSelectorCompact({
   selectedModelId,
   onModelChange,
@@ -409,7 +586,7 @@ function PureModelSelectorCompact({
   }, [selectedModelId]);
 
   const selectedModel = chatModels.find(
-    (model) => model.id === optimisticModelId
+    (model) => model.id === optimisticModelId,
   );
 
   return (

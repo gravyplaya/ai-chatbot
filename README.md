@@ -24,7 +24,7 @@
 - [AI SDK](https://ai-sdk.dev/docs/introduction)
   - Unified API for generating text, structured objects, and tool calls with LLMs
   - Hooks for building dynamic chat and generative user interfaces
-  - Supports xAI (default), OpenAI, Fireworks, and other model providers
+  - Supports Venice.ai (default) with multiple model options and other providers
 - [shadcn/ui](https://ui.shadcn.com)
   - Styling with [Tailwind CSS](https://tailwindcss.com)
   - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
@@ -36,15 +36,22 @@
 
 ## Model Providers
 
-This template uses the [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) to access multiple AI models through a unified interface. The default configuration includes [xAI](https://x.ai) models (`grok-2-vision-1212`, `grok-3-mini`) routed through the gateway.
+This template uses [Venice.ai](https://venice.ai) as the primary LLM provider. Venice.ai offers privacy-focused, uncensored AI models with advanced features like web search, reasoning, and vision capabilities.
 
-### AI Gateway Authentication
+### Venice.ai Features
 
-**For Vercel deployments**: Authentication is handled automatically via OIDC tokens.
+- **Multiple Model Options**: Choose from fastest, code-optimized, vision, uncensored, and reasoning models
+- **Web Search Integration**: Automatic web search with citations for up-to-date information
+- **Privacy-Focused**: No data retention or training on your conversations
+- **OpenAI-Compatible API**: Easy integration with existing OpenAI tooling
 
-**For non-Vercel deployments**: You need to provide an AI Gateway API key by setting the `AI_GATEWAY_API_KEY` environment variable in your `.env.local` file.
+### Configuration
 
-With the [AI SDK](https://ai-sdk.dev/docs/introduction), you can also switch to direct LLM providers like [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://ai-sdk.dev/providers/ai-sdk-providers) with just a few lines of code.
+You need to provide a Venice API key by setting the `VENICE_API_KEY` environment variable in your `.env.local` file.
+
+Get your API key at: [https://venice.ai/api](https://venice.ai/api)
+
+The app dynamically fetches available models from Venice.ai's API and categorizes them by traits (Fastest, Code, Vision, Uncensored, Reasoning) for easy selection.
 
 ## Deploy Your Own
 

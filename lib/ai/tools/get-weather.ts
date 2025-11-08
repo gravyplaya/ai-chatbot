@@ -1,20 +1,22 @@
 import { tool } from "ai";
 import { z } from "zod";
 
-async function geocodeCity(city: string): Promise<{ latitude: number; longitude: number } | null> {
+async function geocodeCity(
+  city: string,
+): Promise<{ latitude: number; longitude: number } | null> {
   try {
     const response = await fetch(
-      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`
+      `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`,
     );
-    
+
     if (!response.ok) return null;
-    
+
     const data = await response.json();
-    
+
     if (!data.results || data.results.length === 0) {
       return null;
     }
-    
+
     const result = data.results[0];
     return {
       latitude: result.latitude,
@@ -26,14 +28,17 @@ async function geocodeCity(city: string): Promise<{ latitude: number; longitude:
 }
 
 export const getWeather = tool({
-  description: "Get the current weather at a location. You can provide either coordinates or a city name.",
+  description:
+    "Get the current weather at a location. You can provide either coordinates or a city name.",
   inputSchema: z.union([
     z.object({
       latitude: z.number(),
       longitude: z.number(),
     }),
     z.object({
-      city: z.string().describe("City name (e.g., 'San Francisco', 'New York', 'London')"),
+      city: z
+        .string()
+        .describe("City name (e.g., 'San Francisco', 'New York', 'London')"),
     }),
   ]),
   execute: async (input) => {
@@ -55,15 +60,21 @@ export const getWeather = tool({
     }
 
     const response = await fetch(
-      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&hourly=temperature_2m&daily=sunrise,sunset&timezone=auto`
+      `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&hourly=temperature_2m&daily=sunrise,sunset&timezone=auto&temperature_unit=fahrenheit`,
     );
 
     const weatherData = await response.json();
-    
+
+    if (weatherData.error) {
+      return {
+        error: `Weather API error: ${weatherData.reason}`,
+      };
+    }
+
     if ("city" in input) {
       weatherData.cityName = input.city;
     }
-    
+
     return weatherData;
   },
 });

@@ -1,7 +1,13 @@
 import Image from "next/image";
 import type { Attachment } from "@/lib/types";
 import { Loader } from "./elements/loader";
-import { CrossSmallIcon } from "./icons";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { CrossSmallIcon, DownloadIcon, InfoIcon } from "./icons";
 import { Button } from "./ui/button";
 
 export const PreviewAttachment = ({
@@ -14,19 +20,20 @@ export const PreviewAttachment = ({
   onRemove?: () => void;
 }) => {
   const { name, url, contentType } = attachment;
+  const isImage = contentType?.startsWith("image");
 
   return (
     <div
-      className="group relative size-16 overflow-hidden rounded-lg border bg-muted"
+      className="group relative size-64 overflow-hidden rounded-lg border bg-muted"
       data-testid="input-attachment-preview"
     >
-      {contentType?.startsWith("image") ? (
+      {isImage ? (
         <Image
           alt={name ?? "An image attachment"}
           className="size-full object-cover"
-          height={64}
+          height={256}
           src={url}
-          width={64}
+          width={256}
         />
       ) : (
         <div className="flex size-full items-center justify-center text-muted-foreground text-xs">
@@ -51,8 +58,31 @@ export const PreviewAttachment = ({
         </Button>
       )}
 
-      <div className="absolute inset-x-0 bottom-0 truncate bg-linear-to-t from-black/80 to-transparent px-1 py-0.5 text-[10px] text-white">
-        {name}
+      <div className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent px-2 py-1">
+        {isImage ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger>
+                <InfoIcon size={14} className="text-white" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{name}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <div className="truncate text-[10px] text-white">{name}</div>
+        )}
+        {isImage && !isUploading && (
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-white hover:text-gray-300"
+          >
+            <DownloadIcon size={14} />
+          </a>
+        )}
       </div>
     </div>
   );

@@ -47,7 +47,7 @@ const PurePreviewMessage = ({
   const [mode, setMode] = useState<"view" | "edit">("view");
 
   const attachmentsFromMessage = message.parts.filter(
-    (part) => part.type === "file"
+    (part) => part.type === "file",
   );
 
   useDataStream();
@@ -75,13 +75,13 @@ const PurePreviewMessage = ({
         <div
           className={cn("flex flex-col", {
             "gap-2 md:gap-4": message.parts?.some(
-              (p) => p.type === "text" && p.text?.trim()
+              (p) => p.type === "text" && p.text?.trim(),
             ),
             "min-h-96": message.role === "assistant" && requiresScrollPadding,
             "w-full":
               (message.role === "assistant" &&
                 message.parts?.some(
-                  (p) => p.type === "text" && p.text?.trim()
+                  (p) => p.type === "text" && p.text?.trim(),
                 )) ||
               mode === "edit",
             "max-w-[calc(100%-2.5rem)] sm:max-w-[min(fit-content,80%)]":
@@ -175,10 +175,19 @@ const PurePreviewMessage = ({
                     {state === "input-available" && (
                       <ToolInput input={part.input} />
                     )}
-                    {state === "output-available" && (
+                    {(state === "output-available" ||
+                      state === "output-error") && (
                       <ToolOutput
-                        errorText={undefined}
-                        output={<Weather weatherAtLocation={part.output} />}
+                        errorText={
+                          state === "output-error"
+                            ? String(part.output?.error)
+                            : undefined
+                        }
+                        output={
+                          state === "output-available" ? (
+                            <Weather weatherAtLocation={part.output} />
+                          ) : undefined
+                        }
                       />
                     )}
                   </ToolContent>
@@ -306,7 +315,7 @@ export const PreviewMessage = memo(
     }
 
     return false;
-  }
+  },
 );
 
 export const ThinkingMessage = () => {
@@ -328,12 +337,9 @@ export const ThinkingMessage = () => {
         </div>
 
         <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="p-0 text-muted-foreground text-sm">
-            Thinking...
-          </div>
+          <div className="p-0 text-muted-foreground text-sm">Thinking...</div>
         </div>
       </div>
     </motion.div>
   );
 };
-
