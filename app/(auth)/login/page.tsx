@@ -20,7 +20,7 @@ export default function Page() {
     login,
     {
       status: "idle",
-    }
+    },
   );
 
   const { update: updateSession } = useSession();
@@ -56,6 +56,10 @@ export default function Page() {
           <h3 className="font-semibold text-xl dark:text-zinc-50">Sign In</h3>
           <p className="text-gray-500 text-sm dark:text-zinc-400">
             Use your email and password to sign in
+          </p>
+          <p className="text-gray-500 text-sm dark:text-zinc-400 mt-2">
+            This is a private, uncensored AI assistant. Your conversations are
+            not monitored or stored by third parties.
           </p>
         </div>
         <AuthForm action={handleSubmit} defaultEmail={email}>

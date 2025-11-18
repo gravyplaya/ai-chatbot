@@ -1,3 +1,5 @@
+"use client";
+
 import { motion } from "framer-motion";
 
 export const Greeting = () => {
@@ -13,7 +15,7 @@ export const Greeting = () => {
         initial={{ opacity: 0, y: 10 }}
         transition={{ delay: 0.5 }}
       >
-        Hello there!
+        Welcome to your Private AI
       </motion.div>
       <motion.div
         animate={{ opacity: 1, y: 0 }}
@@ -22,7 +24,8 @@ export const Greeting = () => {
         initial={{ opacity: 0, y: 10 }}
         transition={{ delay: 0.6 }}
       >
-        How can I help you today?
+        This is an uncensored, private AI assistant. Your conversations are not
+        monitored or stored by third parties.
       </motion.div>
     </div>
   );
