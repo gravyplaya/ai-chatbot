@@ -1,13 +1,16 @@
 import type { InferSelectModel } from "drizzle-orm";
 import {
   boolean,
+  date,
   foreignKey,
+  integer,
   json,
   jsonb,
   pgTable,
   primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
   varchar,
 } from "drizzle-orm/pg-core";
@@ -171,3 +174,20 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const userUsage = pgTable(
+  "UserUsage",
+  {
+    id: uuid("id").primaryKey().notNull().defaultRandom(),
+    userId: uuid("userId")
+      .notNull()
+      .references(() => user.id),
+    date: date("date").notNull(),
+    count: integer("count").notNull().default(0),
+  },
+  (table) => ({
+    unq: unique().on(table.userId, table.date),
+  }),
+);
+
+export type UserUsage = InferSelectModel<typeof userUsage>;

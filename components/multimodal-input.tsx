@@ -19,6 +19,7 @@ import {
 import { toast } from "sonner";
 import { useLocalStorage, useWindowSize } from "usehooks-ts";
 import { saveChatModelAsCookie } from "@/app/(chat)/actions";
+import { useSession } from "next-auth/react";
 
 import {
   Select,
@@ -27,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { chatModels, type ImageModel } from "@/lib/ai/models";
+import { chatModels, type ChatModel, type ImageModel } from "@/lib/ai/models";
 import { myProvider } from "@/lib/ai/providers";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import type { AppUsage } from "@/lib/usage";
@@ -85,6 +86,7 @@ function PureMultimodalInput({
   selectedModelId,
   onModelChange,
   usage,
+  setIsGeneratingImage,
 }: {
   chatId: string;
   input: string;
@@ -101,6 +103,7 @@ function PureMultimodalInput({
   selectedModelId: string;
   onModelChange?: (modelId: string) => void;
   usage?: AppUsage;
+  setIsGeneratingImage: Dispatch<SetStateAction<boolean>>;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -261,6 +264,8 @@ function PureMultimodalInput({
         return;
       }
 
+      setIsGeneratingImage(true);
+
       try {
         const response = await fetch("/api/image/generate", {
           method: "POST",
@@ -274,26 +279,34 @@ function PureMultimodalInput({
           const data = await response.json();
           const { url } = data;
 
-          sendMessage({
-            role: "user",
-            parts: [
-              {
-                type: "file",
-                url,
-                filename: prompt,
-                mediaType: "image/png",
-              },
-            ],
-          });
+          setMessages((messages) => [
+            ...messages,
+            {
+              id: crypto.randomUUID(),
+              role: "user",
+              content: "",
+              parts: [
+                {
+                  type: "file",
+                  url,
+                  filename: prompt,
+                  mediaType: "image/png",
+                },
+              ],
+              createdAt: new Date(),
+            },
+          ]);
         } else {
           const { error } = await response.json();
           toast.error(error);
         }
       } catch (_error) {
         toast.error("Failed to generate image, please try again!");
+      } finally {
+        setIsGeneratingImage(false);
       }
     },
-    [sendMessage],
+    [setMessages, setIsGeneratingImage],
   );
 
   return (
@@ -465,6 +478,9 @@ function PureGenerateImageButton({
 }: {
   onGenerate: (prompt: string, model: string, style: string) => void;
 }) {
+  const { data: session } = useSession();
+  const isGuest = session?.user?.type === "guest";
+
   const [prompt, setPrompt] = useState("");
   const [open, setOpen] = useState(false);
   const [models, setModels] = useState<ImageModel[]>([]);
@@ -474,6 +490,20 @@ function PureGenerateImageButton({
 
   useEffect(() => {
     if (open) {
+      if (isGuest) {
+        setModels([
+          {
+            id: "venice-sd35",
+            name: "Venice SD3.5",
+            description: "Standard model",
+          },
+        ]);
+        setSelectedModel("venice-sd35");
+        setStyles(["Photographic"]);
+        setSelectedStyle("Photographic");
+        return;
+      }
+
       fetch("/api/image/models")
         .then((res) => res.json())
         .then((data) => {
@@ -491,7 +521,7 @@ function PureGenerateImageButton({
           }
         });
     }
-  }, [open]);
+  }, [open, isGuest]);
 
   return (
     <AlertDialog open={open} onOpenChange={setOpen}>
@@ -522,7 +552,11 @@ function PureGenerateImageButton({
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="model">Model</Label>
-            <Select onValueChange={setSelectedModel} value={selectedModel}>
+            <Select
+              onValueChange={setSelectedModel}
+              value={selectedModel}
+              disabled={isGuest}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a model" />
               </SelectTrigger>
@@ -542,7 +576,11 @@ function PureGenerateImageButton({
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="style">Style</Label>
-            <Select onValueChange={setSelectedStyle} value={selectedStyle}>
+            <Select
+              onValueChange={setSelectedStyle}
+              value={selectedStyle}
+              disabled={isGuest}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select a style" />
               </SelectTrigger>
@@ -580,19 +618,31 @@ function PureModelSelectorCompact({
   onModelChange?: (modelId: string) => void;
 }) {
   const [optimisticModelId, setOptimisticModelId] = useState(selectedModelId);
+  const [models, setModels] = useState<ChatModel[]>(chatModels);
 
   useEffect(() => {
     setOptimisticModelId(selectedModelId);
   }, [selectedModelId]);
 
-  const selectedModel = chatModels.find(
+  useEffect(() => {
+    fetch("/api/chat/models")
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setModels(data);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch chat models", err));
+  }, []);
+
+  const selectedModel = models.find(
     (model) => model.id === optimisticModelId,
   );
 
   return (
     <PromptInputModelSelect
       onValueChange={(modelName) => {
-        const model = chatModels.find((m) => m.name === modelName);
+        const model = models.find((m) => m.name === modelName);
         if (model) {
           setOptimisticModelId(model.id);
           onModelChange?.(model.id);
@@ -615,7 +665,7 @@ function PureModelSelectorCompact({
       </Trigger>
       <PromptInputModelSelectContent className="min-w-[260px] p-0">
         <div className="flex flex-col gap-px">
-          {chatModels.map((model) => (
+          {models.map((model) => (
             <SelectItem key={model.id} value={model.name}>
               <div className="truncate font-medium text-xs">{model.name}</div>
               <div className="mt-px truncate text-[10px] text-muted-foreground leading-tight">

@@ -21,6 +21,7 @@ type MessagesProps = {
   isReadonly: boolean;
   isArtifactVisible: boolean;
   selectedModelId: string;
+  isGeneratingImage: boolean;
 };
 
 function PureMessages({
@@ -32,6 +33,7 @@ function PureMessages({
   regenerate,
   isReadonly,
   selectedModelId,
+  isGeneratingImage,
 }: MessagesProps) {
   const {
     containerRef: messagesContainerRef,
@@ -92,7 +94,9 @@ function PureMessages({
           ))}
 
           <AnimatePresence mode="wait">
-            {status === "submitted" && <ThinkingMessage key="thinking" />}
+            {(status === "submitted" || isGeneratingImage) && (
+              <ThinkingMessage key="thinking" />
+            )}
           </AnimatePresence>
 
           <div
@@ -125,6 +129,9 @@ export const Messages = memo(PureMessages, (prevProps, nextProps) => {
     return false;
   }
   if (prevProps.selectedModelId !== nextProps.selectedModelId) {
+    return false;
+  }
+  if (prevProps.isGeneratingImage !== nextProps.isGeneratingImage) {
     return false;
   }
   if (prevProps.messages.length !== nextProps.messages.length) {

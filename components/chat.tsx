@@ -62,6 +62,7 @@ export function Chat({
   const [usage, setUsage] = useState<AppUsage | undefined>(initialLastContext);
   const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
   const [currentModelId, setCurrentModelId] = useState(initialChatModel);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const currentModelIdRef = useRef(currentModelId);
 
   useEffect(() => {
@@ -173,6 +174,7 @@ export function Chat({
           setMessages={setMessages}
           status={status}
           votes={votes}
+          isGeneratingImage={isGeneratingImage}
         />
 
         <div className="sticky bottom-0 z-1 mx-auto flex w-full max-w-4xl gap-2 border-t-0 bg-background px-2 pb-3 md:px-4 md:pb-4">
@@ -192,6 +194,7 @@ export function Chat({
               status={status}
               stop={stop}
               usage={usage}
+              setIsGeneratingImage={setIsGeneratingImage}
             />
           )}
         </div>
@@ -213,6 +216,8 @@ export function Chat({
         status={status}
         stop={stop}
         votes={votes}
+        isGeneratingImage={isGeneratingImage}
+        setIsGeneratingImage={setIsGeneratingImage}
       />
 
       <AlertDialog

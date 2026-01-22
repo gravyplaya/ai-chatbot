@@ -31,7 +31,8 @@ import {
   createStreamId,
   deleteChatById,
   getChatById,
-  getMessageCountByUserId,
+  getUsageCountByUserId,
+  incrementUsage,
   getMessagesByChatId,
   saveChat,
   saveMessages,
@@ -113,14 +114,17 @@ export async function POST(request: Request) {
       return new ChatSDKError("unauthorized:chat").toResponse();
     }
 
-    const userType: UserType = session.user.type;
+    const userType: UserType = session.user.type ?? "guest";
 
-    const messageCount = await getMessageCountByUserId({
-      id: session.user.id,
-      differenceInHours: 24,
-    });
+    const messageCount = await getUsageCountByUserId(session.user.id);
 
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
+    // Check if the userType exists in entitlementsByUserType
+    if (!entitlementsByUserType[userType]) {
+      console.error(`Unknown user type: ${userType}`);
+      return new ChatSDKError("unauthorized:chat").toResponse();
+    }
+
+    if (messageCount >= entitlementsByUserType[userType].maxMessagesPerDay) {
       return new ChatSDKError("rate_limit:chat").toResponse();
     }
 
@@ -135,12 +139,19 @@ export async function POST(request: Request) {
         message,
       });
 
-      await saveChat({
-        id,
-        userId: session.user.id,
-        title,
-        visibility: selectedVisibilityType,
-      });
+      if (userType !== "guest") {
+        try {
+          await saveChat({
+            id,
+            userId: session.user.id,
+            title,
+            visibility: selectedVisibilityType,
+          });
+        } catch (error) {
+          console.error("Error saving chat:", error);
+          throw error;
+        }
+      }
     }
 
     const messagesFromDb = await getMessagesByChatId({ id });
@@ -155,21 +166,31 @@ export async function POST(request: Request) {
       country,
     };
 
-    await saveMessages({
-      messages: [
-        {
-          chatId: id,
-          id: message.id,
-          role: "user",
-          parts: message.parts,
-          attachments: [],
-          createdAt: new Date(),
-        },
-      ],
-    });
+    if (userType !== "guest") {
+      await saveMessages({
+        messages: [
+          {
+            chatId: id,
+            id: message.id,
+            role: "user",
+            parts: message.parts,
+            attachments: [],
+            createdAt: new Date(),
+          },
+        ],
+      });
+    }
+
+    // Increment usage for both guests and regular users
+    await incrementUsage(session.user.id);
 
     const streamId = generateUUID();
-    await createStreamId({ streamId, chatId: id });
+    // Only create stream ID if we are saving history? 
+    // Actually stream ID is used for resumable streams. 
+    // If we don't save chat, we probably shouldn't save stream ID either.
+    if (userType !== "guest") {
+      await createStreamId({ streamId, chatId: id });
+    }
 
     let finalMergedUsage: AppUsage | undefined;
 
@@ -248,25 +269,27 @@ export async function POST(request: Request) {
       },
       generateId: generateUUID,
       onFinish: async ({ messages }) => {
-        await saveMessages({
-          messages: messages.map((currentMessage) => ({
-            id: currentMessage.id,
-            role: currentMessage.role,
-            parts: currentMessage.parts,
-            createdAt: new Date(),
-            attachments: [],
-            chatId: id,
-          })),
-        });
-
-        if (finalMergedUsage) {
-          try {
-            await updateChatLastContextById({
+        if (userType !== "guest") {
+          await saveMessages({
+            messages: messages.map((currentMessage) => ({
+              id: currentMessage.id,
+              role: currentMessage.role,
+              parts: currentMessage.parts,
+              createdAt: new Date(),
+              attachments: [],
               chatId: id,
-              context: finalMergedUsage,
-            });
-          } catch (err) {
-            console.warn("Unable to persist last usage for chat", id, err);
+            })),
+          });
+
+          if (finalMergedUsage) {
+            try {
+              await updateChatLastContextById({
+                chatId: id,
+                context: finalMergedUsage,
+              });
+            } catch (err) {
+              console.warn("Unable to persist last usage for chat", id, err);
+            }
           }
         }
       },

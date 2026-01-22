@@ -68,6 +68,8 @@ function PureArtifact({
   isReadonly,
   selectedVisibilityType,
   selectedModelId,
+  isGeneratingImage,
+  setIsGeneratingImage,
 }: {
   chatId: string;
   input: string;
@@ -79,6 +81,8 @@ function PureArtifact({
   messages: ChatMessage[];
   setMessages: UseChatHelpers<ChatMessage>["setMessages"];
   votes: Vote[] | undefined;
+  isGeneratingImage: boolean;
+  setIsGeneratingImage: Dispatch<SetStateAction<boolean>>;
   sendMessage: UseChatHelpers<ChatMessage>["sendMessage"];
   regenerate: UseChatHelpers<ChatMessage>["regenerate"];
   isReadonly: boolean;
@@ -345,6 +349,7 @@ function PureArtifact({
                     setMessages={setMessages}
                     status={status}
                     stop={stop}
+                    setIsGeneratingImage={setIsGeneratingImage}
                   />
                 </div>
               </div>

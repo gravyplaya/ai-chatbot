@@ -1,13 +1,26 @@
 import { put } from "@vercel/blob";
-import { auth } from "@/app/(auth)/auth";
+import { auth, type UserType } from "@/app/(auth)/auth";
 import { ChatSDKError } from "@/lib/errors";
 import { NextResponse } from "next/server";
+import { getUsageCountByUserId, incrementUsage } from "@/lib/db/queries";
+import { entitlementsByUserType } from "@/lib/ai/entitlements";
 
 export async function POST(request: Request) {
   const session = await auth();
 
   if (!session?.user) {
     return new ChatSDKError("unauthorized:chat").toResponse();
+  }
+
+  const userType: UserType = session.user.type ?? "guest";
+  const usageCount = await getUsageCountByUserId(session.user.id);
+
+  if (!entitlementsByUserType[userType]) {
+    return new ChatSDKError("unauthorized:chat").toResponse();
+  }
+
+  if (usageCount >= entitlementsByUserType[userType].maxMessagesPerDay) {
+    return new ChatSDKError("rate_limit:chat").toResponse();
   }
 
   const { prompt, model, style_preset } = await request.json();
@@ -17,6 +30,14 @@ export async function POST(request: Request) {
       "bad_request:api",
       "Prompt is required.",
     ).toResponse();
+  }
+
+  let selectedModel = model || "venice-sd35";
+  let selectedStyle = style_preset;
+
+  if (userType === "guest") {
+    selectedModel = "venice-sd35";
+    selectedStyle = "Photographic";
   }
 
   try {
@@ -29,13 +50,13 @@ export async function POST(request: Request) {
           Authorization: `Bearer ${process.env.VENICE_API_KEY}`,
         },
         body: JSON.stringify({
-          model: model || "venice-sd35",
+          model: selectedModel,
           prompt,
           width: 1024,
           height: 1024,
           return_binary: true,
           format: "png",
-          style_preset: style_preset,
+          style_preset: selectedStyle,
           hide_watermark: true,
           safe_mode: false,
         }),
@@ -51,6 +72,8 @@ export async function POST(request: Request) {
         `Venice API error: ${errorMessage}`,
       ).toResponse();
     }
+
+    await incrementUsage(session.user.id);
 
     const imageBuffer = await veniceResponse.arrayBuffer();
 

@@ -220,13 +220,16 @@ export async function fetchVeniceTraits(): Promise<
       };
     }
 
-    const response = await fetch("https://api.venice.ai/api/v1/models/traits", {
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
+    const response = await fetch(
+      "https://api.venice.ai/api/v1/models/traits?type=text",
+      {
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+        },
+        // Cache for 3 days
+        next: { revalidate: 259200 },
       },
-      // Cache for 1 hour
-      next: { revalidate: 3600 },
-    });
+    );
 
     if (!response.ok) {
       throw new Error("Failed to fetch traits");
@@ -243,6 +246,54 @@ export async function fetchVeniceTraits(): Promise<
       default_vision: "mistral-31-24b",
       default_reasoning: "deepseek-r1-671b",
     };
+  }
+}
+
+export async function getChatModels(): Promise<ChatModel[]> {
+  const apiKey = process.env.VENICE_API_KEY;
+  if (!apiKey) {
+    return chatModels;
+  }
+
+  try {
+    const [traits, allModelsResponse] = await Promise.all([
+      fetchVeniceTraits(),
+      fetch("https://api.venice.ai/api/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        next: { revalidate: 259200 },
+      }).then((res) => res.json() as Promise<VeniceModelsResponse>),
+    ]);
+
+    const allModels = allModelsResponse.data;
+
+    return chatModels.map((model) => {
+      if (model.trait && traits[model.trait as keyof typeof traits]) {
+        const newModelId = traits[model.trait as keyof typeof traits];
+        const modelDetails = allModels.find((m) => m.id === newModelId);
+
+        if (modelDetails) {
+          return {
+            ...model,
+            modelId: newModelId,
+            description: `${modelDetails.model_spec.name} - ${
+              model.description.split(" - ")[1] || "Dynamic model"
+            }`,
+          };
+        }
+
+        return {
+          ...model,
+          modelId: newModelId,
+          description: `${newModelId} - ${
+            model.description.split(" - ")[1] || "Dynamic model"
+          }`,
+        };
+      }
+      return model;
+    });
+  } catch (error) {
+    console.error("Error fetching dynamic models:", error);
+    return chatModels;
   }
 }
 
@@ -268,7 +319,7 @@ export const fetchVeniceImageModels = cache(
         headers: {
           Authorization: `Bearer ${apiKey}`,
         },
-        next: { revalidate: 3600 },
+        next: { revalidate: 259200 },
       },
     );
 
@@ -292,7 +343,7 @@ export const fetchVeniceImageModels = cache(
     return imageModels;
   },
   ["venice-image-models"],
-  { revalidate: 3600 },
+  { revalidate: 259200 },
 );
 
 export const fetchVeniceImageStyles = cache(
@@ -306,7 +357,7 @@ export const fetchVeniceImageStyles = cache(
       headers: {
         Authorization: `Bearer ${apiKey}`,
       },
-      next: { revalidate: 3600 },
+      next: { revalidate: 259200 },
     });
 
     if (!response.ok) {
@@ -320,5 +371,5 @@ export const fetchVeniceImageStyles = cache(
     return data.data;
   },
   ["venice-image-styles"],
-  { revalidate: 3600 },
+  { revalidate: 259200 },
 );
